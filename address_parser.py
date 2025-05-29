@@ -16,7 +16,7 @@ def parse_address(text):
     )
 
     patron_direccion = re.compile(
-    rf"^(\d+\s+(?:[A-Z0-9]+\s+)*{sufijos_calle}(?:\s+{unidades})?)\s+([A-Z]+(?:\s+[A-Z]+)*)\s+([A-Z]{{2}})\s+(\d{{5}}(?:-\d{{4}})?)$"
+    rf"^(\d+\s+(?:[A-Z0-9]+\s+)*{sufijos_calle}(?:\s+(?:N|S|E|W|NE|NW|SE|SW))?(?:\s+{unidades})?)\s+([A-Z]+(?:\s+[A-Z]+)*)\s+([A-Z]{{2}})\s+(\d{{5}}(?:-\d{{4}})?)$"
 
     )
 

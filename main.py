@@ -4,6 +4,8 @@ import pandas as pd
 import os
 import re
 from address_parser import parse_address 
+from historial import cargar_historial, guardar_en_historial, ARCHIVO_HISTORIAL
+import json
 
 # Estilos globales
 FONDO_COLOR = "#f2f2f2"
@@ -15,6 +17,7 @@ FUENTE_TITULO = ("Segoe UI", 16, "bold")
 # Variables globales
 headers_original = []
 headers_limpios = []
+
 
 df_actual = None
 ruta_archivo = ""
@@ -38,6 +41,9 @@ def limpiar_headers(headers):
 def guardar_csv(headers_finales):
     global df_actual, ruta_archivo
     df_actual.columns = headers_finales
+    if df_actual is None:
+         messagebox.showerror("Error", "No hay archivo cargado para guardar.")
+         return
 
     nombre_base = os.path.splitext(os.path.basename(ruta_archivo))[0]
     nueva_ruta = os.path.join(os.path.dirname(ruta_archivo),f"{nombre_base}_limpio.csv")
@@ -48,34 +54,46 @@ def guardar_csv(headers_finales):
 
 #Ventana editable para headers
 def editar_headers(headers_actuales):
+
+    if not headers_actuales:
+        messagebox.showwarning("Sin headers", "No hay headers para editar.")
+      
+        return
+
     ventana_edicion = tk.Toplevel()
     ventana_edicion.title("Editar Headers Manualmente")
-    ventana_edicion.geometry("420x500")
+    ventana_edicion.geometry("420x500")   
 
     # 🔹 Canvas con Scrollbar
     canvas = tk.Canvas(ventana_edicion)
     scrollbar = tk.Scrollbar(ventana_edicion, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=scrollbar.set)
+    canvas.pack(side="left", fill="both", expand=True)
+    scrollbar.pack(side="right", fill="y")
+
+    # frame se desplaza
     scroll_frame = tk.Frame(canvas)
+    canvas.create_window((0,0), window=scroll_frame, anchor="nw")
+     
+   
+    
 
     scroll_frame.bind(
         "<Configure>",
         lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
     )
 
-    canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
-    canvas.configure(yscrollcommand=scrollbar.set)
-
-    canvas.pack(side="left", fill="both", expand=True)
-    scrollbar.pack(side="right", fill="y")
+    contenido_centrado = tk.Frame(scroll_frame)
+    contenido_centrado.pack(anchor='center', expand=True)
 
     entradas = []
 
     # 🔹 Entradas dinámicas
     for i, header in enumerate(headers_actuales):
-        tk.Label(scroll_frame, text=f"Header {i + 1}:").pack()
-        entrada = tk.Entry(scroll_frame)
+        tk.Label(contenido_centrado, text=f"Header {i + 1}:").pack(anchor="center")
+        entrada = tk.Entry(contenido_centrado, width=40)
         entrada.insert(0, header)
-        entrada.pack(pady=2)
+        entrada.pack(pady=10)
         entradas.append(entrada)
 
     # 🔹 Botón fuera del scroll frame
@@ -84,9 +102,9 @@ def editar_headers(headers_actuales):
         guardar_csv(nuevos_headers)
         ventana_edicion.destroy()
 
-    boton_aplicar = tk.Button(scroll_frame, text="Aplicar Cambios", command=aplicar_cambios)
-    boton_aplicar.pack(pady=10)
+    tk.Button(ventana_edicion, text="Aplicar Cambios", command=aplicar_cambios, bg=BOTON_COLOR, fg="WHITE").pack(pady=20)
 
+   
 
 
 def elegir_columna_direccion(opciones):
@@ -148,6 +166,7 @@ def limpiar_archivo(ruta):
         headers_actualizados = list(df_actual.columns)
 
         guardar_csv(headers_actualizados)
+        guardar_en_historial(ruta_archivo)
 
     except Exception as e:
         etiqueta_resultado.config(text=f"Error: {str(e)}")
@@ -217,7 +236,77 @@ def separar_direcciones(df, columna='mailingaddress'):
 
     return df
 
+def mostrar_historial():
+    rutas_historial = cargar_historial()
+    if not rutas_historial:
+        messagebox.showinfo("Historial", "No hay archivos recientes.")
+        return
 
+    ventana_historial = tk.Toplevel()
+    ventana_historial.title("Historial Reciente")
+    ventana_historial.geometry("800x800")
+    ventana_historial.configure(bg=FONDO_COLOR)
+
+    tk.Label(ventana_historial, text="Archivos limpiados recientemente:", font=FUENTE_TITULO, bg=FONDO_COLOR).pack(pady=15)
+
+    lista = tk.Listbox(ventana_historial, font=FUENTE, width=70, height=10)
+    lista.pack(pady=10)
+
+    # Llenar el Listbox
+    for ruta in rutas_historial:
+        lista.insert(tk.END, ruta)
+
+    def abrir_archivo_seleccionado():
+        seleccion = lista.curselection()
+        if seleccion:
+            ruta = lista.get(seleccion[0])
+            if os.path.exists(ruta):
+                os.startfile(ruta)
+            else:
+                messagebox.showerror("Archivo no encontrado", f"No se encontró:\n{ruta}")
+        else:
+            messagebox.showwarning("Selecciona un archivo", "Debes seleccionar un archivo de la lista.")
+
+    def eliminar_archivo():
+        seleccion = lista.curselection()
+        if not seleccion:
+            messagebox.showwarning("Ninguna selección", "Por favor, selecciona un archivo para eliminar.")
+            return
+
+        index = seleccion[0]
+        archivo_seleccionado = lista.get(index)
+
+        confirmar = messagebox.askyesno("Eliminar", f"¿Estás seguro de que quieres eliminar del historial:\n{archivo_seleccionado}?")
+        if confirmar:
+            with open(ARCHIVO_HISTORIAL, "r") as f:
+                lineas = f.readlines()
+
+            if 0 <= index < len(lineas):
+                del lineas[index]
+                with open(ARCHIVO_HISTORIAL, "w") as f:
+                    f.writelines(lineas)
+
+                lista.delete(index)  # Actualiza la lista sin recargar la ventana
+                messagebox.showinfo("Eliminado", f"Archivo eliminado del historial:\n{archivo_seleccionado}")
+
+    def borrar_todo():
+        confirmar = messagebox.askyesno("Borrar todo", "¿Estás seguro de que quieres borrar todo el historial?")
+        if confirmar:
+            with open(ARCHIVO_HISTORIAL, "w") as f:
+                json.dump([], f) #Borra todo el historial
+                messagebox.showinfo("Historial borrado", "Todo el historial ha sido eliminado.")
+            
+            lista.delete(0, tk.END)  # Limpia el Listbox
+            ventana_historial.destroy()
+    
+
+    # Botones
+    botones = tk.Frame(ventana_historial, bg=FONDO_COLOR)
+    botones.pack(pady=10)
+    
+    tk.Button(botones, text="📂 Abrir archivo", font=FUENTE, bg="#4CAF50", fg="white", command=abrir_archivo_seleccionado).pack(side="left", padx=5)
+    tk.Button(botones, text="🗑️ Eliminar seleccionado", font=FUENTE, bg="#F44336", fg="white", command=eliminar_archivo).pack(side="left", padx=5)
+    tk.Button(botones, text="🧹 Borrar todo", font=FUENTE, bg="red", fg="white", command=borrar_todo).pack(side="left", padx=5)
 
 
 #Crear ventana principal
@@ -238,6 +327,7 @@ tk.Button(frame_contenido, text="🔍 Mostrar cambios en encabezados", font=FUEN
 
 tk.Button(frame_contenido, text="✏️ Editar headers manualmente", font=FUENTE, bg="#2196F3", fg="white", command=lambda: editar_headers(headers_limpios)).pack(pady=5, fill="x")
 
+tk.Button(frame_contenido, text="🕘 Ver historial reciente", font=FUENTE, bg="#FF9800", fg="white", command=mostrar_historial).pack(pady=5, fill="x")
 etiqueta_resultado = tk.Label(frame_contenido, text="", font=FUENTE, fg="green", bg=FONDO_COLOR, wraplength=400)
 etiqueta_resultado.pack(pady=15)
 
