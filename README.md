@@ -42,3 +42,41 @@
 - Copy
 - Edit
 - pip install -r requirements.txt
+
+# 📦 Requirements
+
+- pandas
+- openpyxl
+- tkinter (comes pre-installed with Python)
+- re (standard Python library)
+
+# 🚀 How to Run
+
+- bash
+- Copy
+- Edit
+- python main.py
+
+# 🧩 Address Parsing
+
+## If your dataset has a column like MailingAddress with values like:
+
+- css
+- Copy
+- Edit
+- 123 Main St, Los Angeles, CA 90001
+- It will automatically extract:
+
+- address → 123 Main St
+
+- city → Los Angeles
+
+- state → CA
+
+- zip → 90001
+
+- You can customize the regex logic in address_parser.py.
+
+## 📁 Output
+
+- The cleaned .csv will be saved in the same folder as the original file with the suffix \_limpio.csv.
