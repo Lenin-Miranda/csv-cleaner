@@ -6,6 +6,7 @@ import re
 from address_parser import parse_address 
 from historial import cargar_historial, guardar_en_historial, ARCHIVO_HISTORIAL
 import json
+from mojo import procesar_archivo
 
 # Estilos globales
 FONDO_COLOR = "#f2f2f2"
@@ -161,6 +162,15 @@ def limpiar_archivo(ruta):
         if columna:
             df_actual = separar_direcciones(df_actual, columna=columna)
 
+        
+        if 'ZIP_CODE' in df_actual.columns and 'CRRT' in df_actual.columns:
+         respuesta = messagebox.askyesno("Trabajo MOJO", "¿Este archivo es un trabajo tipo MOJO?")
+         if respuesta:
+            df_actual = procesar_archivo(df_actual)  # ← Aplica las funciones MOJO personalizadas
+            guardar_csv_mojo(list(df_actual.columns))  # Luego lo divide y guarda
+            guardar_en_historial(ruta_archivo)
+            return
+
 
         # ¡ACTUALIZAR lista de headers tras agregar columnas!
         headers_actualizados = list(df_actual.columns)
@@ -192,9 +202,42 @@ def cargar_y_limpiar():
         limpiar_archivo(ruta)
 
 
+def guardar_csv_mojo(headers_finales):
+    global df_actual, ruta_archivo
+
+    if df_actual is None:
+        messagebox.showerror("Error", "No hay archivo cargado para guardar.")
+        return
+
+    df_actual.columns = headers_finales
+
+    try:
+        total_filas = len(df_actual)
+        partes = simpledialog.askinteger("Dividir en partes", "¿En cuántas partes deseas dividir el archivo?")
+        if not partes or partes < 1:
+            raise ValueError("Número de partes inválido.")
+
+        tamaño_parte = total_filas // partes
+        nombre_base = os.path.splitext(os.path.basename(ruta_archivo))[0]
+
+        for i in range(partes):
+            inicio = i * tamaño_parte
+            fin = (i + 1) * tamaño_parte if i < partes - 1 else total_filas
+            parte_df = df_actual.iloc[inicio:fin]
+            letra = chr(65 + i)  # A, B, C...
+            nombre_parte = f"{nombre_base}_{i+1}{letra}.csv"
+            nueva_ruta = os.path.join(os.path.dirname(ruta_archivo), nombre_parte)
+            parte_df.to_csv(nueva_ruta, index=False)
+
+        etiqueta_resultado.config(text=f"¡Archivo MOJO dividido y guardado en {partes} partes!")
+
+    except Exception as e:
+        messagebox.showerror("Error MOJO", f"No se pudo dividir el archivo: {str(e)}")
+
+
+
 
 def separar_direcciones(df, columna='mailingaddress'):
-    
     def seguro_parsear(valor):
         try:
             partes = parse_address(str(valor))
@@ -208,31 +251,23 @@ def separar_direcciones(df, columna='mailingaddress'):
             return ["", "", "", ""]
 
     nuevas_columnas = df[columna].apply(seguro_parsear)
-    
-    print("Ejemplos de resultados parseados:")
-    for i, val in enumerate(nuevas_columnas.head(10)):
-        print(f"{i}: {val} (len={len(val)})")
 
-    # Aquí chequeamos si alguna fila no tiene exactamente 4 elementos:
+    # Verifica si todas las filas tienen longitud 4
     for i, val in enumerate(nuevas_columnas):
         if not isinstance(val, (list, tuple)) or len(val) != 4:
             raise ValueError(f"Fila {i} con longitud incorrecta: {val}")
 
-    # Evitar sobrescribir columnas existentes
+    # Elimina columnas si ya existen
     for col in ['address', 'city', 'state', 'zip']:
         if col in df.columns:
             df = df.drop(columns=[col])
 
-
+    # Convierte las nuevas columnas en DataFrame
     nuevas_df = pd.DataFrame(nuevas_columnas.tolist(), index=df.index)
-    print("Shape del nuevo dataframe de direcciones:", nuevas_df.shape)
-    print(nuevas_df.head())
-    
-    if nuevas_df.shape[1] == 4:
-        nuevas_df.columns = ['address', 'city', 'state', 'zip']
-        df = pd.concat([df.drop(columns=[col for col in ['address', 'city', 'state', 'zip'] if col in df.columns]), nuevas_df], axis=1)
-    else:
-        raise ValueError(f"Error: el parser devolvió {nuevas_df.shape[1]} columnas en vez de 4.")
+    nuevas_df.columns = ['address', 'city', 'state', 'zip']
+
+    # Combina los DataFrames
+    df = pd.concat([df.drop(columns=[columna]), nuevas_df], axis=1)
 
     return df
 
@@ -315,6 +350,7 @@ ventana = tk.Tk()
 ventana.title("🧹 Limpiador de Datos CSV/XLSX")
 ventana.geometry("500x350")
 ventana.configure(bg=FONDO_COLOR)
+ventana.withdraw()
 
 frame_contenido = tk.Frame(ventana, bg=FONDO_COLOR)
 frame_contenido.pack(pady=20, padx=20)
