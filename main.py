@@ -24,6 +24,12 @@ df_actual = None
 ruta_archivo = ""
 
 
+# Funcion para cargar y limpiar el archivo seleccionado
+def cargar_y_limpiar():
+    ruta = filedialog.askopenfilename(filetypes=[("Csv files or Excel", " *.csv *.xlsx")])
+    if ruta: 
+        limpiar_archivo(ruta)
+
 
 
 # Limpiar headers automaticamente
@@ -31,29 +37,31 @@ def limpiar_headers(headers):
     original = list(headers)
     limpio = []
     for h in headers:
-        h_limpio = h.strip()  # quitar espacios y pasar a minúsculas
+        
+        h_limpio = h.strip().lower()  # quitar espacios y pasar a minúsculas
         h_limpio = re.sub(r'[\s\-]+', "_", h_limpio)  # reemplaza espacios y guiones por "_"
         h_limpio = re.sub(r"[^\w]", "", h_limpio)  # elimina todo lo que no sea letra, número o "_"
         limpio.append(h_limpio)
     return original, limpio
 
 
+
 # Guardar CSV limpio
-def guardar_csv(headers_finales):
+def guardar_csv(headers_finales=None):
     global df_actual, ruta_archivo
-    df_actual.columns = headers_finales
     if df_actual is None:
-         messagebox.showerror("Error", "No hay archivo cargado para guardar.")
-         return
+        messagebox.showerror("Error", "No hay archivo cargado para guardar.")
+        return
+
+    if headers_finales:
+        df_actual.columns = headers_finales
 
     nombre_base = os.path.splitext(os.path.basename(ruta_archivo))[0]
-    nueva_ruta = os.path.join(os.path.dirname(ruta_archivo),f"{nombre_base}_limpio.csv")
+    nueva_ruta = os.path.join(os.path.dirname(ruta_archivo), f"{nombre_base}_limpio.csv")
 
     df_actual.to_csv(nueva_ruta, index=False)
-    etiqueta_resultado.config(text=f"!Archivo limpio guardado como: {os.path.basename(nueva_ruta)}!")
+    etiqueta_resultado.config(text=f"¡Archivo limpio guardado como: {os.path.basename(nueva_ruta)}!")
 
-
-#Ventana editable para headers
 def editar_headers(headers_actuales):
 
     if not headers_actuales:
@@ -99,10 +107,11 @@ def editar_headers(headers_actuales):
 
     # 🔹 Botón fuera del scroll frame
     def aplicar_cambios():
-        nuevos_headers = [e.get() for e in entradas]
-        guardar_csv(nuevos_headers)
-        ventana_edicion.destroy()
-
+      nuevos_headers = [e.get() for e in entradas]
+      df_actual.columns = nuevos_headers  # ✅ Actualiza el DataFrame global
+      guardar_csv(nuevos_headers)
+      ventana_edicion.destroy()
+ 
     tk.Button(ventana_edicion, text="Aplicar Cambios", command=aplicar_cambios, bg=BOTON_COLOR, fg="WHITE").pack(pady=20)
 
    
@@ -162,21 +171,20 @@ def limpiar_archivo(ruta):
         if columna:
             df_actual = separar_direcciones(df_actual, columna=columna)
 
-        
-        if 'ZIP_CODE' in df_actual.columns and 'CRRT' in df_actual.columns:
-         respuesta = messagebox.askyesno("Trabajo MOJO", "¿Este archivo es un trabajo tipo MOJO?")
-         if respuesta:
-            df_actual = procesar_archivo(df_actual)  # ← Aplica las funciones MOJO personalizadas
-            guardar_csv_mojo(list(df_actual.columns))  # Luego lo divide y guarda
-            guardar_en_historial(ruta_archivo)
-            return
-
 
         # ¡ACTUALIZAR lista de headers tras agregar columnas!
+        
+        
+        if 'DROP' not in df_actual.columns:
+            df_actual['DROP'] = "" #Asegurarse de que la columna DROP exista
+            df_actual = procesar_archivo(df_actual, ruta_archivo) 
+        
+        
         headers_actualizados = list(df_actual.columns)
-
+        
         guardar_csv(headers_actualizados)
-        guardar_en_historial(ruta_archivo)
+
+        guardar_en_historial(ruta_archivo)     
 
     except Exception as e:
         etiqueta_resultado.config(text=f"Error: {str(e)}")
@@ -196,48 +204,9 @@ def mostrar_cambios():
 
 
 
-def cargar_y_limpiar():
-    ruta = filedialog.askopenfilename(filetypes=[("Csv files or Excel", " *.csv *.xlsx")])
-    if ruta: 
-        limpiar_archivo(ruta)
-
-
-def guardar_csv_mojo(headers_finales):
-    global df_actual, ruta_archivo
-
-    if df_actual is None:
-        messagebox.showerror("Error", "No hay archivo cargado para guardar.")
-        return
-
-    df_actual.columns = headers_finales
-
-    try:
-        total_filas = len(df_actual)
-        partes = simpledialog.askinteger("Dividir en partes", "¿En cuántas partes deseas dividir el archivo?")
-        if not partes or partes < 1:
-            raise ValueError("Número de partes inválido.")
-
-        tamaño_parte = total_filas // partes
-        nombre_base = os.path.splitext(os.path.basename(ruta_archivo))[0]
-
-        for i in range(partes):
-            inicio = i * tamaño_parte
-            fin = (i + 1) * tamaño_parte if i < partes - 1 else total_filas
-            parte_df = df_actual.iloc[inicio:fin]
-            letra = chr(65 + i)  # A, B, C...
-            nombre_parte = f"{nombre_base}_{i+1}{letra}.csv"
-            nueva_ruta = os.path.join(os.path.dirname(ruta_archivo), nombre_parte)
-            parte_df.to_csv(nueva_ruta, index=False)
-
-        etiqueta_resultado.config(text=f"¡Archivo MOJO dividido y guardado en {partes} partes!")
-
-    except Exception as e:
-        messagebox.showerror("Error MOJO", f"No se pudo dividir el archivo: {str(e)}")
-
-
-
 
 def separar_direcciones(df, columna='mailingaddress'):
+    
     def seguro_parsear(valor):
         try:
             partes = parse_address(str(valor))
@@ -251,23 +220,31 @@ def separar_direcciones(df, columna='mailingaddress'):
             return ["", "", "", ""]
 
     nuevas_columnas = df[columna].apply(seguro_parsear)
+    
+    print("Ejemplos de resultados parseados:")
+    for i, val in enumerate(nuevas_columnas.head(10)):
+        print(f"{i}: {val} (len={len(val)})")
 
-    # Verifica si todas las filas tienen longitud 4
+    # Aquí chequeamos si alguna fila no tiene exactamente 4 elementos:
     for i, val in enumerate(nuevas_columnas):
         if not isinstance(val, (list, tuple)) or len(val) != 4:
             raise ValueError(f"Fila {i} con longitud incorrecta: {val}")
 
-    # Elimina columnas si ya existen
+    # Evitar sobrescribir columnas existentes
     for col in ['address', 'city', 'state', 'zip']:
         if col in df.columns:
             df = df.drop(columns=[col])
 
-    # Convierte las nuevas columnas en DataFrame
-    nuevas_df = pd.DataFrame(nuevas_columnas.tolist(), index=df.index)
-    nuevas_df.columns = ['address', 'city', 'state', 'zip']
 
-    # Combina los DataFrames
-    df = pd.concat([df.drop(columns=[columna]), nuevas_df], axis=1)
+    nuevas_df = pd.DataFrame(nuevas_columnas.tolist(), index=df.index)
+    print("Shape del nuevo dataframe de direcciones:", nuevas_df.shape)
+    print(nuevas_df.head())
+    
+    if nuevas_df.shape[1] == 4:
+        nuevas_df.columns = ['address', 'city', 'state', 'zip']
+        df = pd.concat([df.drop(columns=[col for col in ['address', 'city', 'state', 'zip'] if col in df.columns]), nuevas_df], axis=1)
+    else:
+        raise ValueError(f"Error: el parser devolvió {nuevas_df.shape[1]} columnas en vez de 4.")
 
     return df
 
@@ -350,7 +327,6 @@ ventana = tk.Tk()
 ventana.title("🧹 Limpiador de Datos CSV/XLSX")
 ventana.geometry("500x350")
 ventana.configure(bg=FONDO_COLOR)
-ventana.withdraw()
 
 frame_contenido = tk.Frame(ventana, bg=FONDO_COLOR)
 frame_contenido.pack(pady=20, padx=20)
