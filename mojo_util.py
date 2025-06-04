@@ -39,7 +39,6 @@ def funcion_1_agregar_drop(df):
 
 
 def funcion_3_dividir(df, opcion, cantidad):
-    from itertools import accumulate
     import math
 
     grupos = df.groupby(['zip_code', 'carrier_route'])
