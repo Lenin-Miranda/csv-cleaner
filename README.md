@@ -1,74 +1,48 @@
-# 🧹 CSV/XLSX Data Cleaner
+# CSV Cleaner 🧹📊
 
-## A lightweight desktop app built with Python, Tkinter, and Pandas to help clean and standardize datasets in .csv or .xlsx format. It supports automatic header cleanup, optional manual editing, and even extracts structured address fields from a single column.
+A desktop application built with **Python** and **Tkinter** to clean, reformat, and organize messy CSV and Excel (`.xlsx`) files. Ideal for data processors working with repetitive file structures, such as mailing lists or print logistics.
 
----
+## 🔍 Overview
 
-# ✅ Features
-
-- 📁 Load .csv or .xlsx files.
-
-- ✨ Automatically clean and standardize headers.
-
-- ✏️ Manually edit headers before saving.
-
-- 🧩 Extract address components (street, city, state, ZIP) from messy full addresses.
-
-- 💾 Save cleaned data as .csv.
-
-## 🧰 Tecnologies
-
-- Python 3
-- Tkinter (interfaz gráfica)
-- Pandas (manipulación de datos)
-- Regex (expresiones regulares para direcciones)
+The app simplifies the process of transforming unstructured data into clean, organized CSVs. Users can view header changes, fix formatting, parse incomplete address fields, and maintain a history of recently cleaned files.
 
 ---
 
-# 🛠️ Installation
+## ✨ Features
 
-## Clone the repository:
+- **Supports `.csv` and `.xlsx` files**
+- **Always uses comma `,` as delimiter** for output consistency
+- **Header Cleaner**: Standardizes and sanitizes headers
+- **Header Editor**: Manually rename headers with UI assistance
+- **Address Parser**: Separates full addresses into `Street`, `City`, `State`, and `ZIP`, even when poorly formatted
+- **Recent History**: View the latest files and transformations
+- **Custom Drop Column**: Automatically adds a `DROP` column if needed
+- **MOJO Job Splitter** (optional): Sorts and splits files by ZIP and CRRT (Carrier Route) with intelligent cut points
 
-1. **bash**
+---
 
-- Copy
-- Edit
-- [git clone](https://github.com/Lenin-Miranda/csv-cleaner.git)
-- cd csv-cleaner
-- Install required dependencies:
+## 🛠 Tech Stack
 
-2. **bash**
+- **Python 3**
+- **Tkinter** for GUI
+- **pandas** for data manipulation
+- **openpyxl** for Excel file support
+- **regex** for address parsing
 
-- Copy
-- Edit
-- pip install -r requirements.txt
+---
 
-# 📦 Requirements
+## 🚀 Getting Started
 
-- pandas
-- openpyxl
-- tkinter (comes pre-installed with Python)
-- re (standard Python library)
+1. **Clone the repo:**
 
-# 🚀 How to Run
+**bash**
 
-- bash
-- Copy
-- Edit
-- python main.py
+git clone https://github.com/Lenin-Miranda/csv-cleaner
+cd csv-cleaner
 
-# 🧩 Address Parsing
+2. **install dependencies**
+   pip install pandas openpyxl
 
-## If your dataset has a column like MailingAddress with values like:
+3. **run the app**
 
-- 123 Main St, Los Angeles, CA 90001
-- It will automatically extract:
-- address → 123 Main St
-- city → Los Angeles
-- state → CA
-- zip → 90001
-- You can customize the regex logic in address_parser.py.
-
-## 📁 Output
-
-- The cleaned .csv will be saved in the same folder as the original file with the suffix \_limpio.csv.
+python app.py
