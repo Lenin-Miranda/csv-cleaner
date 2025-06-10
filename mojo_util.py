@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox, simpledialog
 import pandas as pd
-
+from mensajeConfirmacion import preguntar_sobreescribir
 import os
 def detectar_mojo(headers):
     return 'zip_code' in headers and 'carrier_route' in headers
@@ -108,6 +108,7 @@ def funcion_5_guardar_partes(partes, ruta_origen):
         nombre_archivo = f"LVCG_{nombre_drop}.csv"
         ruta_completa = os.path.join(carpeta_origen, nombre_archivo)
         parte.to_csv(ruta_completa, index=False)
+    preguntar_sobreescribir(ruta_origen)
 
 def function_6_preguntar_por_numero():
     numero = simpledialog.askinteger("Numero de parte", "Que numero es el trabajo MOJO?")
@@ -115,3 +116,5 @@ def function_6_preguntar_por_numero():
         messagebox.showwarning("Entrada invalida", "Debes ingresar un numero valido.")
         return None
     return numero
+
+
