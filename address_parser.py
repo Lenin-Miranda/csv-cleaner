@@ -20,6 +20,7 @@ def parse_address(text):
         rf"(?:[, ]+([A-Za-z\s]+))?"  # País opcional
         rf"$"
     )
+
     patron_dir_zip = re.compile(
         rf"^(.*?)[, ]+(\d{{5,9}}(?:-?\d{{4}})?)$"  # Dirección y código postal
     )
