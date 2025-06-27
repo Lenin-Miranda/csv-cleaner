@@ -13,12 +13,7 @@ def parse_address(text):
         r"^(PO BOX \d+)[,\s]+([A-Za-z\s]+),?\s+([A-Za-z]{2})\s+(\d{5,9}(?:-\d{4})?)$"
     )
     patron_direccion = re.compile(
-        rf"^(.*?)"  # Dirección flexible
-        rf"[, ]+([A-Za-z\s\.'-]+?)"  # Ciudad (no greedy)
-        rf"[, ]+([A-Za-z]{{2}})"  # Estado (exactamente dos letras)
-        rf"[, ]+(\d{{5,9}}(?:-?\d{{4}})?)"  # Código postal
-        rf"(?:[, ]+([A-Za-z\s]+))?"  # País opcional
-        rf"$"
+      rf"^(\d+\s+(?:[A-Z0-9]+\s+)*{sufijos_calle}(?:\s+(?:N|S|E|W|NE|NW|SE|SW))?(?:\s+{unidades})?)\s+([A-Z]+(?:\s+[A-Z]+)*)\s+([A-Z]{{2}})\s+(\d{{5}}(?:-\d{{4}})?)$"
     )
 
     patron_dir_zip = re.compile(
