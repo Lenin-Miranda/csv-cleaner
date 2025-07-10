@@ -230,19 +230,17 @@ def separar_direcciones(df, columna='mailingaddress'):
         if not isinstance(val, (list, tuple)) or len(val) != 4:
             raise ValueError(f"Fila {i} con longitud incorrecta: {val}")
 
-    # Evitar sobrescribir columnas existentes
-    for col in ['address', 'city', 'state', 'zip']:
-        if col in df.columns:
-            df = df.drop(columns=[col])
-
-
+    # Crear el DataFrame con las nuevas columnas separadas
     nuevas_df = pd.DataFrame(nuevas_columnas.tolist(), index=df.index)
     print("Shape del nuevo dataframe de direcciones:", nuevas_df.shape)
     print(nuevas_df.head())
     
     if nuevas_df.shape[1] == 4:
-        nuevas_df.columns = ['address', 'city', 'state', 'zip']
-        df = pd.concat([df.drop(columns=[col for col in ['address', 'city', 'state', 'zip'] if col in df.columns]), nuevas_df], axis=1)
+        # Renombrar las nuevas columnas para evitar conflictos
+        nuevas_df.columns = ['address_parsed', 'city_parsed', 'state_parsed', 'zip_parsed']
+        
+        # Agregar las nuevas columnas al DataFrame original
+        df = pd.concat([df, nuevas_df], axis=1)
     else:
         raise ValueError(f"Error: el parser devolvió {nuevas_df.shape[1]} columnas en vez de 4.")
 
